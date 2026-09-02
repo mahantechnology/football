@@ -114,15 +114,14 @@ class ApiFootballProvider extends Provider
             'date'     => $date !== null ? $date : date('Y-m-d', $ts),
             'kickoff'  => $ts,
             'status'   => self::makeStatus($short, $elapsed),
-            'league'   => [
-                'id'       => isset($lg['id']) ? (int) $lg['id'] : 0,
-                'name'     => isset($lg['name']) ? $lg['name'] : '',
-                'country'  => isset($lg['country']) ? $lg['country'] : '',
-                'flag'     => isset($lg['flag']) ? $lg['flag'] : '',
-                'logo'     => isset($lg['logo']) ? $lg['logo'] : '',
-                'round'    => isset($lg['round']) ? $lg['round'] : '',
-                'priority' => $this->leaguePriority(isset($lg['id']) ? $lg['id'] : 0),
-            ],
+            'league'   => $this->makeLeague(
+                isset($lg['id']) ? $lg['id'] : 0,
+                isset($lg['name']) ? $lg['name'] : '',
+                isset($lg['country']) ? $lg['country'] : '',
+                isset($lg['logo']) ? $lg['logo'] : '',
+                isset($lg['round']) ? $lg['round'] : '',
+                isset($lg['flag']) ? $lg['flag'] : ''
+            ),
             'teams'    => [
                 'home' => $this->mapTeam(isset($teams['home']) ? $teams['home'] : []),
                 'away' => $this->mapTeam(isset($teams['away']) ? $teams['away'] : []),
@@ -141,11 +140,11 @@ class ApiFootballProvider extends Provider
 
     private function mapTeam(array $t)
     {
-        return [
-            'id'   => isset($t['id']) ? (int) $t['id'] : 0,
-            'name' => isset($t['name']) ? $t['name'] : '',
-            'logo' => isset($t['logo']) ? $t['logo'] : '',
-        ];
+        return $this->makeTeam(
+            isset($t['name']) ? $t['name'] : '',
+            isset($t['id']) ? $t['id'] : 0,
+            isset($t['logo']) ? $t['logo'] : ''
+        );
     }
 
     public function matchDetail($id)
@@ -282,17 +281,115 @@ class ApiFootballProvider extends Provider
             ];
         }
 
-        return [
-            'league' => [
-                'id'      => isset($lg['id']) ? (int) $lg['id'] : 0,
-                'name'    => isset($lg['name']) ? $lg['name'] : '',
-                'country' => isset($lg['country']) ? $lg['country'] : '',
-                'flag'    => isset($lg['flag']) ? $lg['flag'] : '',
-                'logo'    => isset($lg['logo']) ? $lg['logo'] : '',
-                'season'  => (int) $season,
-            ],
-            'rows' => $out,
-        ];
+        $league           = $this->makeLeague(
+            isset($lg['id']) ? $lg['id'] : 0,
+            isset($lg['name']) ? $lg['name'] : '',
+            isset($lg['country']) ? $lg['country'] : '',
+            isset($lg['logo']) ? $lg['logo'] : '',
+            '',
+            isset($lg['flag']) ? $lg['flag'] : ''
+        );
+        $league['season'] = (int) $season;
+
+        return ['league' => $league, 'rows' => $out];
+    }
+
+    // ---------------------------------------------------------------
+    // قابلیت‌های تکمیلی
+    // ---------------------------------------------------------------
+
+    public function headToHead($matchId)
+    {
+        // اول باید بدانیم بازی بین کدام دو تیم است
+        $rows = $this->call('fixtures', ['id' => $matchId]);
+        if (empty($rows[0]['teams'])) {
+            return [];
+        }
+
+        $homeId = isset($rows[0]['teams']['home']['id']) ? (int) $rows[0]['teams']['home']['id'] : 0;
+        $awayId = isset($rows[0]['teams']['away']['id']) ? (int) $rows[0]['teams']['away']['id'] : 0;
+        if (!$homeId || !$awayId) {
+            return [];
+        }
+
+        $past = $this->call('fixtures/headtohead', [
+            'h2h'  => $homeId . '-' . $awayId,
+            'last' => 8,
+        ]);
+
+        $out = [];
+        foreach ($past as $row) {
+            $fx = isset($row['fixture']) ? $row['fixture'] : [];
+            $ts = isset($fx['timestamp']) ? (int) $fx['timestamp'] : time();
+
+            $out[] = [
+                'date'    => date('Y-m-d', $ts),
+                'league'  => isset($row['league']['name']) ? $this->tr->league($row['league']['name']) : '',
+                'teams'   => [
+                    'home' => $this->mapTeam(isset($row['teams']['home']) ? $row['teams']['home'] : []),
+                    'away' => $this->mapTeam(isset($row['teams']['away']) ? $row['teams']['away'] : []),
+                ],
+                'goals'   => [
+                    'home' => isset($row['goals']['home']) ? $row['goals']['home'] : null,
+                    'away' => isset($row['goals']['away']) ? $row['goals']['away'] : null,
+                ],
+                'swapped' => (isset($row['teams']['home']['id']) && (int) $row['teams']['home']['id'] !== $homeId),
+            ];
+        }
+
+        return $out;
+    }
+
+    public function scorers($leagueId, $season)
+    {
+        $rows = $this->call('players/topscorers', ['league' => $leagueId, 'season' => $season]);
+
+        $out = [];
+        foreach ($rows as $i => $row) {
+            $stat = isset($row['statistics'][0]) ? $row['statistics'][0] : [];
+
+            $out[] = [
+                'rank'    => $i + 1,
+                'player'  => isset($row['player']['name']) ? $row['player']['name'] : '',
+                'photo'   => isset($row['player']['photo']) ? $row['player']['photo'] : '',
+                'team'    => $this->mapTeam(isset($stat['team']) ? $stat['team'] : []),
+                'goals'   => isset($stat['goals']['total']) ? (int) $stat['goals']['total'] : 0,
+                'assists' => isset($stat['goals']['assists']) ? (int) $stat['goals']['assists'] : 0,
+                'penalty' => isset($stat['penalty']['scored']) ? (int) $stat['penalty']['scored'] : 0,
+                'played'  => isset($stat['games']['appearences']) ? (int) $stat['games']['appearences'] : 0,
+            ];
+        }
+
+        return $out;
+    }
+
+    public function teamProfile($teamId)
+    {
+        $recent = [];
+        foreach ($this->call('fixtures', ['team' => $teamId, 'last' => 6, 'timezone' => $this->tz]) as $row) {
+            $recent[] = $this->mapFixture($row);
+        }
+
+        $next = [];
+        foreach ($this->call('fixtures', ['team' => $teamId, 'next' => 6, 'timezone' => $this->tz]) as $row) {
+            $next[] = $this->mapFixture($row);
+        }
+
+        // نام و لوگوی تیم را از یکی از همین بازی‌ها برمی‌داریم
+        $team = null;
+        foreach (array_merge($recent, $next) as $m) {
+            foreach (['home', 'away'] as $side) {
+                if ((string) $m['teams'][$side]['id'] === (string) $teamId) {
+                    $team = $m['teams'][$side];
+                    break 2;
+                }
+            }
+        }
+        if ($team === null) {
+            return null;
+        }
+
+        return ['team' => $team, 'recent' => $recent, 'next' => $next];
     }
 
     public function leagues()
@@ -307,14 +404,14 @@ class ApiFootballProvider extends Provider
             }
             $lg = $rows[0]['league'];
             $co = isset($rows[0]['country']) ? $rows[0]['country'] : [];
-            $out[] = [
-                'id'       => (int) $lg['id'],
-                'name'     => isset($lg['name']) ? $lg['name'] : '',
-                'country'  => isset($co['name']) ? $co['name'] : '',
-                'flag'     => isset($co['flag']) ? $co['flag'] : '',
-                'logo'     => isset($lg['logo']) ? $lg['logo'] : '',
-                'priority' => $this->leaguePriority($lg['id']),
-            ];
+            $out[] = $this->makeLeague(
+                $lg['id'],
+                isset($lg['name']) ? $lg['name'] : '',
+                isset($co['name']) ? $co['name'] : '',
+                isset($lg['logo']) ? $lg['logo'] : '',
+                '',
+                isset($co['flag']) ? $co['flag'] : ''
+            );
         }
         return $out;
     }

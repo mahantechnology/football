@@ -110,26 +110,24 @@ class TheSportsDbProvider extends Provider
             'date'     => $date !== null ? $date : date('Y-m-d', $kickoff),
             'kickoff'  => $kickoff,
             'status'   => self::makeStatus($short, $elapsed),
-            'league'   => [
-                'id'       => $leagueId,
-                'name'     => isset($e['strLeague']) ? $e['strLeague'] : '',
-                'country'  => isset($e['strCountry']) ? $e['strCountry'] : '',
-                'flag'     => '',
-                'logo'     => isset($e['strLeagueBadge']) ? $e['strLeagueBadge'] : '',
-                'round'    => !empty($e['intRound']) ? 'هفته ' . $e['intRound'] : '',
-                'priority' => $this->leaguePriority($leagueId),
-            ],
+            'league'   => $this->makeLeague(
+                $leagueId,
+                isset($e['strLeague']) ? $e['strLeague'] : '',
+                isset($e['strCountry']) ? $e['strCountry'] : '',
+                isset($e['strLeagueBadge']) ? $e['strLeagueBadge'] : '',
+                !empty($e['intRound']) ? 'هفته ' . $e['intRound'] : ''
+            ),
             'teams'    => [
-                'home' => [
-                    'id'   => isset($e['idHomeTeam']) ? (int) $e['idHomeTeam'] : 0,
-                    'name' => isset($e['strHomeTeam']) ? $e['strHomeTeam'] : '',
-                    'logo' => isset($e['strHomeTeamBadge']) ? $e['strHomeTeamBadge'] : '',
-                ],
-                'away' => [
-                    'id'   => isset($e['idAwayTeam']) ? (int) $e['idAwayTeam'] : 0,
-                    'name' => isset($e['strAwayTeam']) ? $e['strAwayTeam'] : '',
-                    'logo' => isset($e['strAwayTeamBadge']) ? $e['strAwayTeamBadge'] : '',
-                ],
+                'home' => $this->makeTeam(
+                    isset($e['strHomeTeam']) ? $e['strHomeTeam'] : '',
+                    isset($e['idHomeTeam']) ? $e['idHomeTeam'] : 0,
+                    isset($e['strHomeTeamBadge']) ? $e['strHomeTeamBadge'] : ''
+                ),
+                'away' => $this->makeTeam(
+                    isset($e['strAwayTeam']) ? $e['strAwayTeam'] : '',
+                    isset($e['idAwayTeam']) ? $e['idAwayTeam'] : 0,
+                    isset($e['strAwayTeamBadge']) ? $e['strAwayTeamBadge'] : ''
+                ),
             ],
             'goals'    => [
                 'home' => $num(isset($e['intHomeScore']) ? $e['intHomeScore'] : null),
@@ -187,11 +185,11 @@ class TheSportsDbProvider extends Provider
             $ga = isset($r['intGoalsAgainst']) ? (int) $r['intGoalsAgainst'] : 0;
             $out[] = [
                 'rank'   => isset($r['intRank']) ? (int) $r['intRank'] : $i + 1,
-                'team'   => [
-                    'id'   => isset($r['idTeam']) ? (int) $r['idTeam'] : 0,
-                    'name' => isset($r['strTeam']) ? $r['strTeam'] : '',
-                    'logo' => isset($r['strBadge']) ? $r['strBadge'] : '',
-                ],
+                'team'   => $this->makeTeam(
+                    isset($r['strTeam']) ? $r['strTeam'] : '',
+                    isset($r['idTeam']) ? $r['idTeam'] : 0,
+                    isset($r['strBadge']) ? $r['strBadge'] : ''
+                ),
                 'played' => isset($r['intPlayed']) ? (int) $r['intPlayed'] : 0,
                 'win'    => isset($r['intWin']) ? (int) $r['intWin'] : 0,
                 'draw'   => isset($r['intDraw']) ? (int) $r['intDraw'] : 0,
@@ -204,17 +202,10 @@ class TheSportsDbProvider extends Provider
             ];
         }
 
-        return [
-            'league' => [
-                'id'      => (int) $leagueId,
-                'name'    => isset($rows[0]['strLeague']) ? $rows[0]['strLeague'] : '',
-                'country' => '',
-                'flag'    => '',
-                'logo'    => '',
-                'season'  => (int) $season,
-            ],
-            'rows' => $out,
-        ];
+        $league           = $this->makeLeague($leagueId, isset($rows[0]['strLeague']) ? $rows[0]['strLeague'] : '');
+        $league['season'] = (int) $season;
+
+        return ['league' => $league, 'rows' => $out];
     }
 
     public function leagues()
@@ -228,14 +219,12 @@ class TheSportsDbProvider extends Provider
                 continue;
             }
             $l = $rows[0];
-            $out[] = [
-                'id'       => (int) $id,
-                'name'     => isset($l['strLeague']) ? $l['strLeague'] : '',
-                'country'  => isset($l['strCountry']) ? $l['strCountry'] : '',
-                'flag'     => '',
-                'logo'     => isset($l['strBadge']) ? $l['strBadge'] : '',
-                'priority' => $this->leaguePriority($id),
-            ];
+            $out[] = $this->makeLeague(
+                $id,
+                isset($l['strLeague']) ? $l['strLeague'] : '',
+                isset($l['strCountry']) ? $l['strCountry'] : '',
+                isset($l['strBadge']) ? $l['strBadge'] : ''
+            );
         }
         return $out;
     }

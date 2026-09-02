@@ -541,19 +541,36 @@ ul { margin: 0; padding: 0; list-style: none; }
 .match.is-finished .match__name.is-loser { color: var(--muted); font-weight: 400; }
 
 /* نشان تیم: لوگوی واقعی یا حرف اول */
+/* جعبه‌ی نشان: یا سپر باشگاه داخلش است یا لوگوی رسمی */
 .badge {
   width: 26px; height: 26px;
-  border-radius: 8px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
   font-size: 11px;
   font-weight: 700;
   color: #fff;
-  overflow: hidden;
-  background: var(--surface-3);
+  line-height: 1;
 }
-.badge img { width: 100%; height: 100%; object-fit: contain; }
+
+.badge__crest {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .28));
+}
+
+/* لوگوی رسمی روی یک زمینه‌ی خیلی ملایم می‌نشیند تا نشان‌های تیره
+   روی پس‌زمینه‌ی تیره هم دیده شوند */
+.badge__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .07);
+  padding: 1px;
+}
+html[data-theme='light'] .badge__img { background: rgba(0, 0, 0, .04); }
 
 .match__score {
   display: flex;
@@ -825,10 +842,8 @@ ul { margin: 0; padding: 0; list-style: none; }
 }
 .sheet__side { text-align: center; }
 .sheet__side .badge {
-  width: 52px; height: 52px;
-  border-radius: 15px;
+  width: 54px; height: 54px;
   margin: 0 auto 8px;
-  font-size: 18px;
 }
 .sheet__side b {
   display: block;
@@ -1040,7 +1055,7 @@ table.standings tbody tr:hover { background: var(--surface-2); }
   text-align: start;
   min-width: 170px;
 }
-.st-team .badge { width: 24px; height: 24px; border-radius: 7px; font-size: 10px; }
+.st-team .badge { width: 24px; height: 24px; }
 .st-rank {
   width: 24px; height: 24px;
   border-radius: 7px;
@@ -1238,7 +1253,7 @@ main { padding-bottom: 10px; min-height: 60vh; }
   }
   .match__name { font-size: 12px; }
   .match__score { font-size: 14.5px; padding: 3px 4px; }
-  .badge { width: 23px; height: 23px; border-radius: 7px; font-size: 10px; }
+  .badge { width: 23px; height: 23px; }
   .star { width: 26px; height: 26px; }
 
   .sheet__num strong { font-size: 28px; }
@@ -1301,3 +1316,286 @@ main { padding-bottom: 10px; min-height: 60vh; }
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================================
+   ۱۸. قابلیت‌های افزوده
+   ========================================================================= */
+
+/* ---------- بخش «دنبال‌شده‌های شما» بالای فهرست ---------- */
+
+.league--pinned {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--border-soft));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 16%, transparent), var(--shadow-sm);
+}
+.league__head--static {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 16%, transparent), transparent 65%);
+}
+.league--pinned .league__flag { color: var(--warn); font-size: 15px; }
+
+/* ---------- نتیجه‌ی پنهان (حالت بدون لو رفتن) ---------- */
+
+.match__score.is-hidden {
+  color: transparent;
+  position: relative;
+  cursor: pointer;
+}
+.match__score.is-hidden i { color: transparent; }
+.match__score.is-hidden::after {
+  content: '••';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  letter-spacing: 2px;
+  font-size: 13px;
+}
+
+/* ---------- نمایش فشرده ---------- */
+
+body.is-compact .match { padding: 6px 12px; }
+body.is-compact .match__name { font-size: 12.5px; }
+body.is-compact .badge { width: 22px; height: 22px; }
+body.is-compact .match__score { font-size: 14px; padding: 2px 5px; }
+body.is-compact .league { margin-bottom: 8px; }
+
+/* ---------- کنش‌های داخل پنجره‌ی بازی ---------- */
+
+.sheet__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.ghost-btn {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text-2);
+  font-size: 12px;
+  transition: all .22s var(--ease);
+}
+.ghost-btn:hover {
+  color: var(--text);
+  border-color: var(--brand-dim);
+  transform: translateY(-1px);
+}
+.ghost-btn.is-on { color: var(--warn); border-color: var(--warn); }
+
+/* ---------- نوار پیشرفت بازی ---------- */
+
+.sheet__progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+  margin-top: 14px;
+  direction: ltr;
+}
+.sheet__progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-bright), var(--live));
+  border-radius: 999px;
+  transition: width .9s var(--ease);
+}
+
+/* نام تیم در سربرگ پنجره قابل کلیک است */
+.sheet__side { cursor: pointer; border-radius: 12px; padding: 4px; transition: background .2s var(--ease); }
+.sheet__side:hover { background: var(--surface-2); }
+
+/* ---------- رویارویی دو تیم ---------- */
+
+.h2h-sum {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.h2h-sum__cell {
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+}
+.h2h-sum__cell b { display: block; font-size: 20px; font-weight: 700; color: var(--brand-bright); }
+.h2h-sum__cell span { font-size: 10.5px; color: var(--muted); }
+
+.h2h-row,
+.tm-row {
+  display: grid;
+  grid-template-columns: 74px 1fr 62px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 4px;
+  border-bottom: 1px dashed var(--border-soft);
+  font-size: 12.5px;
+}
+.h2h-row:last-child, .tm-row:last-child { border-bottom: 0; }
+
+.tm-row { cursor: pointer; border-radius: 8px; transition: background .18s var(--ease); }
+.tm-row:hover { background: var(--surface-2); }
+
+.h2h-row__date,
+.tm-row__date { font-size: 10.5px; color: var(--muted); }
+
+.h2h-row__team,
+.tm-row__team {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.h2h-row__team--away,
+.tm-row__team--away { text-align: start; }
+
+.h2h-row__score,
+.tm-row__score {
+  text-align: center;
+  font-weight: 700;
+  background: var(--surface-2);
+  border-radius: 7px;
+  padding: 2px 4px;
+  direction: ltr;
+  font-size: 12px;
+}
+
+/* ---------- پروفایل تیم ---------- */
+
+.team-hero { text-align: center; }
+.badge--xl { width: 68px; height: 68px; margin: 0 auto 10px; }
+.team-hero__name { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+
+.follow-btn {
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text-2);
+  font-size: 12.5px;
+  transition: all .22s var(--ease);
+}
+.follow-btn:hover { transform: translateY(-1px); border-color: var(--brand-dim); color: var(--text); }
+.follow-btn.is-on {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.team-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- پنجره‌ی تنظیمات ---------- */
+
+.sheet__hero--slim { padding: 16px 16px 12px; }
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+}
+.setting:last-child { border-bottom: 0; }
+.setting--block { display: block; cursor: default; }
+
+.setting__text { display: flex; flex-direction: column; gap: 2px; }
+.setting__text b { font-size: 13px; font-weight: 500; }
+.setting__text small { font-size: 11px; color: var(--muted); }
+
+.setting__chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+
+/* کلید روشن/خاموش */
+.switch {
+  flex-shrink: 0;
+  width: 44px;
+  height: 25px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: background .25s var(--ease), border-color .25s var(--ease);
+  cursor: pointer;
+}
+.switch i {
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform .25s var(--ease), background .25s var(--ease);
+}
+.switch.is-on { background: var(--brand); border-color: var(--brand); }
+.switch.is-on i { background: #fff; transform: translateX(-19px); }
+html[dir='ltr'] .switch.is-on i { transform: translateX(19px); }
+
+/* میان‌برهای صفحه‌کلید */
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.keys span { display: flex; align-items: center; gap: 5px; }
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  font-size: 10.5px;
+  font-family: inherit;
+  color: var(--text-2);
+  text-align: center;
+}
+
+/* ---------- کشیدن برای تازه‌سازی ---------- */
+
+.pull {
+  height: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11.5px;
+  transition: height .2s var(--ease), color .2s var(--ease);
+}
+.pull.is-ready { color: var(--brand-bright); }
+
+@media (min-width: 721px) { .pull { display: none; } }
+
+/* ---------- ریزتنظیم‌های موبایل برای بخش‌های جدید ---------- */
+
+@media (max-width: 720px) {
+  .h2h-row, .tm-row { grid-template-columns: 62px 1fr 54px 1fr; font-size: 12px; gap: 6px; }
+  .h2h-sum__cell b { font-size: 17px; }
+  .badge--xl { width: 58px; height: 58px; }
+  /* ناوبری حالا سه دکمه دارد */
+  .nav__btn { font-size: 11.5px; padding: 9px 4px; }
+}
+
+/* نوار تاریخ فقط در صفحه‌ی نتایج زنده نمایش داده می‌شود */
+body:not(.on-live) .datebar { display: none; }

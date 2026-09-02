@@ -26,6 +26,9 @@
 </head>
 <body>
 
+  <!-- نشانگر «کشیدن برای تازه‌سازی» روی موبایل -->
+  <div class="pull" id="pull"><span>برای به‌روزرسانی رها کنید</span></div>
+
   <!-- ================= هدر ================= -->
   <header class="header">
     <div class="container header__inner">
@@ -41,12 +44,21 @@
       <nav class="nav" aria-label="ناوبری اصلی">
         <button class="nav__btn is-active" data-page="live" type="button">نتایج زنده</button>
         <button class="nav__btn" data-page="standings" type="button">جدول‌ها</button>
+        <button class="nav__btn" data-page="scorers" type="button">گلزنان</button>
       </nav>
 
       <div class="header__tools">
         <button class="icon-btn" id="searchBtn" type="button" aria-label="جست‌وجو">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="settingsBtn" type="button" aria-label="تنظیمات">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1A1.7 1.7 0 008.9 19a1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1A1.7 1.7 0 004.6 8.9a1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>
           </svg>
         </button>
 
@@ -127,8 +139,14 @@
 
     <!-- ================= صفحه جدول رده‌بندی ================= -->
     <div class="page" id="page-standings">
-      <div class="league-picker" id="leaguePicker"></div>
+      <div class="league-picker"></div>
       <div id="standings"></div>
+    </div>
+
+    <!-- ================= صفحه برترین گلزنان ================= -->
+    <div class="page" id="page-scorers">
+      <div class="league-picker"></div>
+      <div id="scorers"></div>
     </div>
 
   </main>
@@ -163,6 +181,24 @@
     <div class="sheet__hero" id="sheetHero"></div>
     <div class="sheet__tabs" id="sheetTabs"></div>
     <div class="sheet__body" id="sheetBody"></div>
+  </section>
+
+  <!-- ================= پنجره تنظیمات ================= -->
+  <section class="sheet sheet--settings" id="settings" role="dialog" aria-modal="true" aria-label="تنظیمات">
+    <div class="sheet__grab"></div>
+
+    <button class="sheet__close" id="settingsClose" type="button" aria-label="بستن">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <div class="sheet__hero sheet__hero--slim">
+      <div class="sheet__league" style="margin:0;font-size:14px;font-weight:700;color:var(--text)">تنظیمات</div>
+    </div>
+
+    <div class="sheet__body" id="settingsBody"></div>
   </section>
 
   <!-- ================= اعلان‌ها ================= -->

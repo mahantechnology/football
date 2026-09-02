@@ -14,6 +14,7 @@ error_reporting(E_ALL);
 
 require __DIR__ . '/lib/Cache.php';
 require __DIR__ . '/lib/Http.php';
+require __DIR__ . '/lib/Translator.php';
 require __DIR__ . '/lib/Provider.php';
 require __DIR__ . '/lib/DemoProvider.php';
 require __DIR__ . '/lib/ApiFootballProvider.php';
@@ -245,6 +246,44 @@ switch ($action) {
         cached($cache, "leagues|$providerName", (int) $config['cache']['leagues'], function () use ($provider) {
             return $provider->leagues();
         }, $meta);
+        break;
+
+    case 'h2h':
+        $id = q('id');
+        if ($id === '' || strlen($id) > 64) {
+            fail('شناسه‌ی بازی نامعتبر است.', null, $meta);
+        }
+        cached($cache, "h2h|$providerName|$id", (int) $config['cache']['standings'],
+            function () use ($provider, $id) {
+                return $provider->headToHead($id);
+            }, $meta);
+        break;
+
+    case 'scorers':
+        $league = (int) q('league', '0');
+        $season = (int) q('season', (string) $config['season']);
+        if ($league <= 0) {
+            fail('شناسه‌ی لیگ نامعتبر است.', null, $meta);
+        }
+        cached($cache, "scorers|$providerName|$league|$season", (int) $config['cache']['standings'],
+            function () use ($provider, $league, $season) {
+                return $provider->scorers($league, $season);
+            }, $meta);
+        break;
+
+    case 'team':
+        $id = q('id');
+        if ($id === '' || strlen($id) > 64) {
+            fail('شناسه‌ی تیم نامعتبر است.', null, $meta);
+        }
+        cached($cache, "team|$providerName|$id", (int) $config['cache']['today'],
+            function () use ($provider, $id) {
+                $t = $provider->teamProfile($id);
+                if ($t === null) {
+                    throw new ApiException('اطلاعات این تیم در دسترس نیست.');
+                }
+                return $t;
+            }, $meta);
         break;
 
     default:

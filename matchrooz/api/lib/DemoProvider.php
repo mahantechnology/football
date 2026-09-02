@@ -254,18 +254,17 @@ class DemoProvider extends Provider
             'date'     => $date,
             'kickoff'  => $fx['kickoff'],
             'status'   => $state['status'],
-            'league'   => [
-                'id'       => $fx['league']['id'],
-                'name'     => $fx['league']['name'],
-                'country'  => $fx['league']['country'],
-                'flag'     => $fx['league']['flag'],
-                'logo'     => '',
-                'round'    => 'هفته ' . $this->rnd(1, 30),
-                'priority' => $this->leaguePriority($fx['league']['id']),
-            ],
+            'league'   => $this->makeLeague(
+                $fx['league']['id'],
+                $fx['league']['name'],
+                $fx['league']['country'],
+                '',
+                'هفته ' . $this->rnd(1, 30),
+                $fx['league']['flag']
+            ),
             'teams'    => [
-                'home' => ['id' => crc32($fx['home']) % 9000, 'name' => $fx['home'], 'logo' => ''],
-                'away' => ['id' => crc32($fx['away']) % 9000, 'name' => $fx['away'], 'logo' => ''],
+                'home' => $this->makeTeam($fx['home'], crc32($fx['home']) % 9000),
+                'away' => $this->makeTeam($fx['away'], crc32($fx['away']) % 9000),
             ],
             'goals'    => $goals,
             'halftime' => $ht,
@@ -406,7 +405,7 @@ class DemoProvider extends Provider
             $ga     = $lose * 2 + $draw + $this->rnd(0, 10);
 
             $rows[] = [
-                'team'   => ['id' => crc32($team) % 9000, 'name' => $team, 'logo' => ''],
+                'team'   => $this->makeTeam($team, crc32($team) % 9000),
                 'played' => $played,
                 'win'    => $win,
                 'draw'   => $draw,
@@ -434,17 +433,10 @@ class DemoProvider extends Provider
         }
         unset($r);
 
-        return [
-            'league' => [
-                'id'      => $league['id'],
-                'name'    => $league['name'],
-                'country' => $league['country'],
-                'flag'    => $league['flag'],
-                'logo'    => '',
-                'season'  => (int) $season,
-            ],
-            'rows' => $rows,
-        ];
+        $lg           = $this->makeLeague($league['id'], $league['name'], $league['country'], '', '', $league['flag']);
+        $lg['season'] = (int) $season;
+
+        return ['league' => $lg, 'rows' => $rows];
     }
 
     private function formString()
@@ -457,18 +449,190 @@ class DemoProvider extends Provider
         return $s;
     }
 
+    // ---------------------------------------------------------------
+    // قابلیت‌های تکمیلی
+    // ---------------------------------------------------------------
+
+    /** فیکسچر خام یک بازی را از روی شناسه پیدا می‌کند */
+    private function findFixture($id)
+    {
+        if (!preg_match('/^d(\d{4})(\d{2})(\d{2})-/', $id, $m)) {
+            return null;
+        }
+        foreach ($this->schedule("$m[1]-$m[2]-$m[3]") as $fx) {
+            if ($fx['id'] === $id) {
+                return $fx;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * رویارویی‌های گذشته‌ی دو تیم.
+     * بذر از روی نام دو تیم (مرتب‌شده) ساخته می‌شود تا نتیجه‌ی یکسانی
+     * برای هر دو جهتِ بازی بدهد.
+     */
+    public function headToHead($matchId)
+    {
+        $fx = $this->findFixture($matchId);
+        if ($fx === null) {
+            return [];
+        }
+
+        $pair = [$fx['home'], $fx['away']];
+        sort($pair);
+        $this->srand('h2h|' . implode('|', $pair));
+
+        $out   = [];
+        $count = $this->rnd(4, 7);
+        $ts    = strtotime('today');
+
+        for ($i = 0; $i < $count; $i++) {
+            // هر بازی چند ماه عقب‌تر از قبلی
+            $ts -= $this->rnd(90, 260) * 86400;
+
+            // میزبانی بین دو تیم جابه‌جا می‌شود
+            $swap = ($i % 2) === 1;
+            $home = $swap ? $fx['away'] : $fx['home'];
+            $away = $swap ? $fx['home'] : $fx['away'];
+
+            $hg = $this->rnd(0, 4);
+            $ag = $this->rnd(0, 3);
+
+            $out[] = [
+                'date'    => date('Y-m-d', $ts),
+                'league'  => $fx['league']['name'],
+                'teams'   => [
+                    'home' => $this->makeTeam($home, crc32($home) % 9000),
+                    'away' => $this->makeTeam($away, crc32($away) % 9000),
+                ],
+                'goals'   => ['home' => $hg, 'away' => $ag],
+                'swapped' => $swap,
+            ];
+        }
+
+        return $out;
+    }
+
+    /** برترین گلزنان یک لیگ */
+    public function scorers($leagueId, $season)
+    {
+        $league = null;
+        foreach ($this->data['leagues'] as $l) {
+            if ((int) $l['id'] === (int) $leagueId) {
+                $league = $l;
+                break;
+            }
+        }
+        if ($league === null) {
+            return [];
+        }
+
+        // یک استخر نام مخصوص همین لیگ، تا نام تکراری در جدول نیفتد
+        $this->srand($season . '|pool|' . $leagueId);
+        $pool = $this->shuffleDet($this->data['players']);
+        $p    = 0;
+
+        $rows = [];
+        foreach ($league['teams'] as $ti => $team) {
+            // از هر تیم دو بازیکن وارد فهرست می‌شود
+            for ($i = 0; $i < 2; $i++) {
+                if ($p >= count($pool)) {
+                    break 2; // استخر نام تمام شد
+                }
+                $this->srand($season . '|scorer|' . $leagueId . '|' . $team . '|' . $i);
+
+                // آقای گل‌ها کم‌اند و بقیه دنباله‌ای نزولی می‌سازند،
+                // تا جدول شبیه یک فصل واقعی به نظر برسد
+                $base  = (int) round(26 * exp(-0.16 * ($ti * 2 + $i)));
+                $goals = max(1, $base + $this->rnd(-2, 2));
+
+                $rows[] = [
+                    'player'  => $pool[$p++],
+                    'team'    => $this->makeTeam($team, crc32($team) % 9000),
+                    'goals'   => $goals,
+                    'assists' => $this->rnd(0, max(1, (int) round($goals / 2))),
+                    'penalty' => $this->rnd(0, max(1, (int) round($goals / 5))),
+                    'played'  => $this->rnd(14, 26),
+                ];
+            }
+        }
+
+        usort($rows, function ($a, $b) {
+            if ($a['goals'] !== $b['goals']) {
+                return $b['goals'] - $a['goals'];
+            }
+            return $b['assists'] - $a['assists'];
+        });
+
+        $rows = array_slice($rows, 0, 20);
+        foreach ($rows as $i => &$r) {
+            $r['rank'] = $i + 1;
+        }
+        unset($r);
+
+        return $rows;
+    }
+
+    /**
+     * پروفایل تیم: بازی‌های اخیر و پیش‌رو.
+     * برنامه‌ی روزهای اطراف ساخته و بازی‌های این تیم جدا می‌شود.
+     */
+    public function teamProfile($teamId)
+    {
+        // پیدا کردن تیم از روی شناسه
+        $name = null;
+        foreach ($this->data['leagues'] as $l) {
+            foreach ($l['teams'] as $t) {
+                if ((string) (crc32($t) % 9000) === (string) $teamId) {
+                    $name = $t;
+                    break 2;
+                }
+            }
+        }
+        if ($name === null) {
+            return null;
+        }
+
+        $past   = [];
+        $future = [];
+
+        for ($d = -14; $d <= 14; $d++) {
+            $date = date('Y-m-d', strtotime("$d days"));
+
+            foreach ($this->schedule($date) as $fx) {
+                if ($fx['home'] !== $name && $fx['away'] !== $name) {
+                    continue;
+                }
+                $m = $this->build($fx, $date);
+
+                if ($m['status']['finished']) {
+                    $past[] = $m;
+                } elseif (!$m['status']['live']) {
+                    $future[] = $m;
+                } else {
+                    // بازی در حال انجام، بالای فهرست اخیر می‌نشیند
+                    array_unshift($past, $m);
+                }
+            }
+        }
+
+        // اخیرترین‌ها اول
+        usort($past, function ($a, $b) { return $b['kickoff'] - $a['kickoff']; });
+        usort($future, function ($a, $b) { return $a['kickoff'] - $b['kickoff']; });
+
+        return [
+            'team'   => $this->makeTeam($name, crc32($name) % 9000),
+            'recent' => array_slice($past, 0, 6),
+            'next'   => array_slice($future, 0, 6),
+        ];
+    }
+
     public function leagues()
     {
         $out = [];
         foreach ($this->data['leagues'] as $l) {
-            $out[] = [
-                'id'       => $l['id'],
-                'name'     => $l['name'],
-                'country'  => $l['country'],
-                'flag'     => $l['flag'],
-                'logo'     => '',
-                'priority' => $this->leaguePriority($l['id']),
-            ];
+            $out[] = $this->makeLeague($l['id'], $l['name'], $l['country'], '', '', $l['flag']);
         }
         usort($out, function ($a, $b) {
             return $a['priority'] - $b['priority'];
