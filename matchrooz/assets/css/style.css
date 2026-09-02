@@ -60,22 +60,75 @@
   --glow: radial-gradient(1200px 500px at 50% -180px, rgba(48,147,59,.20), transparent 70%);
 }
 
+/* پوسته‌ی روز — حالت پیش‌فرض سایت */
 html[data-theme='light'] {
-  --bg:          #EFF3F0;
-  --bg-soft:     #E7EDE9;
+  --bg:          #F4F7F5;
+  --bg-soft:     #ECF1EE;
   --surface:     #FFFFFF;
-  --surface-2:   #F6F9F7;
-  --surface-3:   #EDF3EF;
-  --border:      #DCE5DF;
-  --border-soft: #E8EEEA;
-  --text:        #101815;
-  --text-2:      #4A5A53;
-  --muted:       #7B8B83;
-  --shadow-sm: 0 2px 8px rgba(16, 40, 26, .06);
-  --shadow:    0 10px 30px rgba(16, 40, 26, .09);
-  --shadow-lg: 0 24px 60px rgba(16, 40, 26, .16);
-  --glow: radial-gradient(1200px 500px at 50% -200px, rgba(48,147,59,.14), transparent 70%);
+  --surface-2:   #F4F8F5;
+  --surface-3:   #E7EFE9;
+  --border:      #CFDCD4;
+  --border-soft: #E1EAE4;
+
+  /* متن تیره‌تر از حد معمول، چون جدول نتایج باید در نور روز هم خوانا باشد */
+  --text:        #0C1613;
+  --text-2:      #41534B;
+  --muted:       #6E8078;
+
+  --live:        #E11D34;   /* قرمز کمی تیره‌تر، روی سفید بهتر می‌نشیند */
+  --brand-bright:#2A8A36;   /* سبز روشن روی سفید کم‌رنگ می‌شد */
+
+  --shadow-sm: 0 1px 2px rgba(12, 34, 22, .05), 0 3px 10px rgba(12, 34, 22, .045);
+  --shadow:    0 8px 26px rgba(12, 34, 22, .10);
+  --shadow-lg: 0 24px 60px rgba(12, 34, 22, .18);
+
+  --glow: radial-gradient(1100px 460px at 50% -220px, rgba(48,147,59,.11), transparent 72%);
 }
+
+/* ---- ریزتنظیم‌های مخصوص پوسته‌ی روز ---- */
+
+html[data-theme='light'] .header {
+  background: rgba(255, 255, 255, .82);
+  border-bottom-color: var(--border);
+}
+html[data-theme='light'] .datebar {
+  background: rgba(244, 247, 245, .9);
+  border-bottom-color: var(--border);
+}
+
+/* کارت‌ها روی زمینه‌ی روشن به مرز مشخص‌تری نیاز دارند */
+html[data-theme='light'] .league,
+html[data-theme='light'] .table-wrap,
+html[data-theme='light'] .side-card,
+html[data-theme='light'] .tcard,
+html[data-theme='light'] .dchip {
+  border-color: var(--border);
+}
+
+/* نوار عنوان لیگ کمی پررنگ‌تر تا بخش‌ها از هم جدا شوند */
+html[data-theme='light'] .league__head,
+html[data-theme='light'] .league__head--static {
+  background: linear-gradient(90deg, rgba(48, 147, 59, .09), rgba(48, 147, 59, .01) 62%);
+}
+
+/* بازی زنده: زمینه‌ی قرمز باید دیده شود ولی چشم را نزند */
+html[data-theme='light'] .match.is-live .match__score {
+  background: rgba(225, 29, 52, .10);
+  color: #C2162B;
+}
+html[data-theme='light'] .pill--live { background: rgba(225, 29, 52, .12); color: #C2162B; }
+
+html[data-theme='light'] .match__score { background: var(--surface-3); }
+
+/* ردیف بازنده در بازی تمام‌شده نباید تا حد ناخوانایی محو شود */
+html[data-theme='light'] .match.is-finished .match__name.is-loser { color: #7D8D85; }
+
+html[data-theme='light'] .badge__crest { filter: drop-shadow(0 1px 2px rgba(12, 34, 22, .18)); }
+
+html[data-theme='light'] .toast { background: #17211D; border-color: #17211D; color: #F2F6F3; }
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb { background: #CBD8D1; }
+html[data-theme='light'] ::-webkit-scrollbar-thumb:hover { background: var(--brand); }
 
 /* =========================================================================
    ۲. پایه
@@ -649,12 +702,14 @@ html[data-theme='light'] .badge__img { background: rgba(0, 0, 0, .04); }
   overflow: hidden;
 }
 .tcard:hover { transform: translateY(-3px); border-color: var(--brand-dim); }
+/* نوار قرمز کنار کارت، نشانه‌ی «در حال بازی» */
 .tcard::after {
   content: '';
   position: absolute;
-  top: 0; inset-inline-start: 0;
-  width: 60px; height: 60px;
-  background: radial-gradient(circle at 0 0, rgba(255,65,85,.16), transparent 70%);
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: linear-gradient(var(--live), #A5122A);
 }
 .tcard__min {
   font-size: 10.5px;
@@ -1599,3 +1654,12 @@ kbd {
 
 /* نوار تاریخ فقط در صفحه‌ی نتایج زنده نمایش داده می‌شود */
 body:not(.on-live) .datebar { display: none; }
+
+/* دکمه‌ی «جمع کردن همه» در نوار فیلترها */
+.chip--ghost {
+  margin-inline-start: auto;
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+}
+.chip--ghost:hover { color: var(--brand-bright); border-color: var(--brand-dim); }

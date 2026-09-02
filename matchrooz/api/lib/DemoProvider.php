@@ -90,14 +90,10 @@ class DemoProvider extends Provider
         foreach ($this->data['leagues'] as $league) {
             $this->srand($dayKey . '|league|' . $league['id']);
 
-            // هر لیگ در بعضی روزها بازی ندارد
-            if ($this->rnd(1, 100) > 88) {
-                continue;
-            }
-
+            // همه‌ی لیگ‌ها هر روز برنامه دارند تا فهرست هیچ‌وقت خالی نباشد
             $teams = $this->shuffleDet($league['teams']);
             $max   = (int) floor(count($teams) / 2);
-            $count = $this->rnd(max(1, $max - 1), $max);
+            $count = $max;
 
             for ($i = 0; $i < $count; $i++) {
                 $fixtures[] = [
@@ -597,7 +593,7 @@ class DemoProvider extends Provider
         $past   = [];
         $future = [];
 
-        for ($d = -14; $d <= 14; $d++) {
+        for ($d = -10; $d <= 10; $d++) {
             $date = date('Y-m-d', strtotime("$d days"));
 
             foreach ($this->schedule($date) as $fx) {

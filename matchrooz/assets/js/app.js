@@ -7,7 +7,8 @@
 
   var API_URL      = 'api/index.php';
   var REFRESH_SEC  = 20;    // فاصله‌ی پیش‌فرض بازآوری (از تنظیمات خوانده می‌شود)
-  var DATE_RANGE   = 7;     // تعداد روز قبل/بعد در نوار تاریخ
+  var DAYS_BACK    = 3;     // ۳ روز گذشته در نوار تاریخ
+  var DAYS_AHEAD   = 4;     // ۴ روز آینده در نوار تاریخ
   var FA           = window.Jalali;
 
   /* ---------------------------------------------------------------------
@@ -206,7 +207,7 @@
 
   var Settings = {
     defaults: {
-      theme:    'dark',
+      theme:    'light',   // پوسته‌ی پیش‌فرض: روز
       refresh:  20,      // ثانیه
       sound:    false,   // صدای گل
       notify:   false,   // اعلان مرورگر
@@ -365,7 +366,7 @@
     var today = new Date();
     var html  = '';
 
-    for (var i = -DATE_RANGE; i <= DATE_RANGE; i++) {
+    for (var i = -DAYS_BACK; i <= DAYS_AHEAD; i++) {
       var d   = FA.addDays(today, i);
       var iso = FA.isoDate(d);
       var j   = FA.fromDate(d);
@@ -395,11 +396,14 @@
      --------------------------------------------------------------------- */
 
   function counts() {
-    var c = { all: State.matches.length, live: 0, finished: 0, upcoming: 0, fav: 0 };
+    var c = { all: State.matches.length, live: 0, started: 0, finished: 0, upcoming: 0, fav: 0 };
     State.matches.forEach(function (m) {
       if (m.status.live) c.live++;
       else if (m.status.finished) c.finished++;
       else c.upcoming++;
+
+      // «شروع شده» یعنی سوت آغاز زده شده: چه در جریان، چه تمام‌شده
+      if (m.status.live || m.status.finished) c.started++;
       if (isFollowed(m)) c.fav++;
     });
     return c;
@@ -413,10 +417,14 @@
     var defs = [
       { key: 'all',      label: 'همه',        n: c.all },
       { key: 'live',     label: 'زنده',       n: c.live, live: true },
+      { key: 'started',  label: 'شروع شده',   n: c.started },
       { key: 'finished', label: 'پایان‌یافته', n: c.finished },
       { key: 'upcoming', label: 'شروع نشده',  n: c.upcoming },
       { key: 'fav',      label: 'دنبال‌شده',   n: c.fav }
     ];
+
+    // با ۲۷ لیگ در یک صفحه، جمع‌کردن یک‌جای همه واقعاً به کار می‌آید
+    var allCollapsed = State.collapsed.size > 0;
 
     box.innerHTML = defs.map(function (d) {
       return '<button class="chip' + (State.filter === d.key ? ' is-active' : '') +
@@ -424,7 +432,9 @@
              (d.live ? '<span class="chip__dot"></span>' : '') +
              esc(d.label) +
              '<span class="chip__count">' + fa(d.n) + '</span></button>';
-    }).join('');
+    }).join('') +
+    '<button class="chip chip--ghost" id="toggleAll" type="button">' +
+      (allCollapsed ? '⤢ باز کردن همه' : '⤡ جمع کردن همه') + '</button>';
   }
 
   /* ---------------------------------------------------------------------
@@ -463,6 +473,7 @@
 
     return State.matches.filter(function (m) {
       if (State.filter === 'live'     && !m.status.live) return false;
+      if (State.filter === 'started'  && !(m.status.live || m.status.finished)) return false;
       if (State.filter === 'finished' && !m.status.finished) return false;
       if (State.filter === 'upcoming' && (m.status.live || m.status.finished)) return false;
       if (State.filter === 'fav' && !isFollowed(m)) return false;
@@ -609,6 +620,7 @@
     var msg = {
       live:     ['هیچ بازی زنده‌ای نیست', 'وقتی بازی‌ای شروع شود، همین‌جا زنده نمایش داده می‌شود.'],
       fav:      ['هنوز بازی‌ای دنبال نمی‌کنید', 'روی ستاره‌ی کنار هر بازی بزنید تا اینجا جمع شود.'],
+      started:  ['هنوز بازی‌ای شروع نشده', 'به‌محض شروع اولین بازی، همین‌جا دیده می‌شود.'],
       finished: ['بازی تمام‌شده‌ای نیست', 'برای این روز هنوز نتیجه‌ای ثبت نشده است.'],
       upcoming: ['بازی پیش‌رویی نیست', 'برنامه‌ی این روز خالی است.'],
       all:      ['بازی‌ای برای این روز نیست', 'تاریخ دیگری را از نوار بالا انتخاب کنید.']
@@ -1557,6 +1569,22 @@
         return;
       }
 
+      // جمع‌کردن یا باز کردن همه‌ی لیگ‌ها
+      if (e.target.closest('#toggleAll')) {
+        if (State.collapsed.size > 0) {
+          State.collapsed.clear();
+        } else {
+          // فقط لیگ‌هایی که همین حالا روی صفحه‌اند
+          $$('.league__head[data-league]').forEach(function (h) {
+            State.collapsed.add(h.dataset.league);
+          });
+        }
+        Store.set('collapsed', Array.from(State.collapsed));
+        renderFilters();
+        renderList();
+        return;
+      }
+
       // باز/بسته کردن لیگ
       if ((t = e.target.closest('[data-league]'))) {
         var key = t.dataset.league;
@@ -1695,7 +1723,8 @@
         if (State.page !== 'live') return;
         var step = (e.key === 'ArrowRight') ? -1 : 1;
         var d    = FA.addDays(FA.parseIso(State.date), step);
-        if (Math.abs(FA.daysFromToday(d)) > 7) return;
+        var off  = FA.daysFromToday(d);
+        if (off < -DAYS_BACK || off > DAYS_AHEAD) return;
 
         State.date = FA.isoDate(d);
         State.firstLoad = true;
